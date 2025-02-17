@@ -38,8 +38,6 @@
         <div id="responseMessage" class="response-message"></div>
     </div>
 
-
-
     <script>
         document.getElementById("calculateTotal").addEventListener("click", function() {
             let productId = document.getElementById("product_id").value;

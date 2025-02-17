@@ -16,8 +16,7 @@ class TransactionController extends Controller
      */
     public function index()
     {
-        // $data_product = Product::all();
-        // return view('components.transaction.index',['header' => 'Transaction'],compact('data_product'));
+        //
     }
 
     /**
@@ -30,47 +29,46 @@ class TransactionController extends Controller
     }
 
     public function store(Request $request)
-{
-    try {
-        DB::beginTransaction();
+    {
+        try {
+            DB::beginTransaction();
 
-        $validator = Validator::make($request->all(), [
-            'product_id' => 'required|exists:product,id_product',
-            'quantity' => 'required|integer|min:1',
-            'total_price' => 'required|numeric|min:1',
-            'amount_paid' => 'required|numeric|min:1',
-        ]);
+            $validator = Validator::make($request->all(), [
+                'product_id' => 'required|exists:product,id_product',
+                'quantity' => 'required|integer|min:1',
+                'total_price' => 'required|numeric|min:1',
+                'amount_paid' => 'required|numeric|min:1',
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 422);
+            if ($validator->fails()) {
+                return response()->json(['error' => $validator->errors()], 422);
+            }
+
+            $product = Product::findOrFail($request->product_id);
+            if ($product->stock < $request->quantity) {
+                return response()->json(['error' => 'Stok tidak mencukupi!', 'stock_remaining' => $product->stock], 400);
+            }
+
+            $product->decrement('stock', $request->quantity);
+            $transaction = Transaction::create($request->only('product_id', 'quantity', 'total_price'));
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Transaksi berhasil!',
+                'data' => [
+                    'id' => $transaction->id,
+                    'product_id' => $transaction->product_id,
+                    'quantity' => $transaction->quantity,
+                    'total_price' => $transaction->total_price,
+                    'created_at' => $transaction->created_at,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
         }
-
-        // Simpan transaksi
-        $product = Product::findOrFail($request->product_id);
-        if ($product->stock < $request->quantity) {
-            return response()->json(['error' => 'Stok tidak mencukupi!', 'stock_remaining' => $product->stock], 400);
-        }
-
-        $product->decrement('stock', $request->quantity);
-        $transaction = Transaction::create($request->only('product_id', 'quantity', 'total_price'));
-
-        DB::commit();
-
-        return response()->json([
-            'message' => 'Transaksi berhasil!',
-            'data' => [
-                'id' => $transaction->id,
-                'product_id' => $transaction->product_id,
-                'quantity' => $transaction->quantity,
-                'total_price' => $transaction->total_price,
-                'created_at' => $transaction->created_at,
-            ]
-        ]);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json(['error' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
     }
-}
 
 
     /**
